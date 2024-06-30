@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניהול חשבונות פרויקטים</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+    <style>
+        .hidden { display: none; }
+        .active-nav { background-color: #4A5568; color: white; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-gray-800 text-white p-4">
+        <ul class="flex space-x-4">
+            <li><a href="#" class="nav-link active-nav" data-target="home">דף הבית</a></li>
+            <li><a href="#" class="nav-link" data-target="projects">פרויקטים</a></li>
+            <li><a href="#" class="nav-link" data-target="clients">לקוחות</a></li>
+            <li><a href="#" class="nav-link" data-target="invoices">חשבונות</a></li>
+            <li><a href="#" class="nav-link" data-target="tasks">משימות</a></li>
+            <li><a href="#" class="nav-link" data-target="reports">דוחות</a></li>
+        </ul>
+    </nav>
+
+    <div class="container mx-auto p-4">
+        <section id="home" class="mb-8">
+            <h1 class="text-3xl font-bold mb-4">דשבורד</h1>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div class="bg-white p-4 rounded shadow">
+                    <h2 class="text-xl font-semibold mb-2">סה"כ פרויקטים</h2>
+                    <p id="totalProjects" class="text-2xl font-bold">0</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow">
+                    <h2 class="text-xl font-semibold mb-2">סה"כ לקוחות</h2>
+                    <p id="totalClients" class="text-2xl font-bold">0</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow">
+                    <h2 class="text-xl font-semibold mb-2">סה"כ חשבונות</h2>
+                    <p id="totalInvoices" class="text-2xl font-bold">0</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow">
+                    <h2 class="text-xl font-semibold mb-2">סה"כ סכום מאושר</h2>
+                    <p id="totalApproved" class="text-2xl font-bold">₪0</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-white p-4 rounded shadow">
+                    <h2 class="text-xl font-semibold mb-2">סטטוס חשבונות</h2>
+                    <canvas id="invoiceStatusChart"></canvas>
+                </div>
+                <div class="bg-white p-4 rounded shadow">
+                    <h2 class="text-xl font-semibold mb-2">סיכום פרויקטים</h2>
+                    <canvas id="projectSummaryChart"></canvas>
+                </div>
+            </div>
+            <div class="mt-4 bg-white p-4 rounded shadow">
+                <h2 class="text-xl font-semibold mb-2">התראות</h2>
+                <ul id="alertsList" class="list-disc list-inside"></ul>
+            </div>
+        </section>
+
+        <section id="projects" class="hidden">
+            <h1 class="text-3xl font-bold mb-4">ניהול פרויקטים</h1>
+            <form id="projectForm" class="bg-white p-4 rounded shadow mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="projectName" placeholder="שם הפרויקט" class="border p-2 rounded" required>
+                    <input type="text" id="clientName" placeholder="שם הלקוח" class="border p-2 rounded" required>
+                    <input type="number" id="projectAmount" placeholder="סכום הפרויקט" class="border p-2 rounded" required>
+                    <input type="date" id="projectStartDate" placeholder="תאריך התחלה" class="border p-2 rounded" required>
+                    <textarea id="projectNotes" placeholder="הערות לפרויקט" class="border p-2 rounded" rows="3"></textarea>
+                </div>
+                <button type="submit" class="bg-blue-500 text-white p-2 rounded mt-4 w-full">הוסף פרויקט</button>
+            </form>
+            <div class="bg-white p-4 rounded shadow">
+                <h2 class="text-xl font-semibold mb-2">רשימת פרויקטים</h2>
+                <table id="projectsTable" class="w-full text-sm text-left">
+                    <thead class="bg-gray-200">
+                        <tr>
+                            <th class="p-2">שם הפרויקט</th>
+                            <th class="p-2">שם הלקוח</th>
+                            <th class="p-2">סכום הפרויקט</th>
+                            <th class="p-2">תאריך התחלה</th>
+                            <th class="p-2">סה"כ חשבונות</th>
+                            <th class="p-2">סה"כ מאושר</th>
+                            <th class="p-2">יתרה</th>
+                            <th class="p-2">הערות</th>
+                            <th class="p-2">פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="clients" class="hidden">
+            <h1 class="text-3xl font-bold mb-4">ניהול לקוחות</h1>
+            <form id="clientForm" class="bg-white p-4 rounded shadow mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="newClientName" placeholder="שם הלקוח" class="border p-2 rounded" required>
+                    <input type="email" id="clientEmail" placeholder="אימייל" class="border p-2 rounded" required>
+                    <input type="tel" id="clientPhone" placeholder="טלפון" class="border p-2 rounded" required>
+                    <input type="text" id="clientAddress" placeholder="כתובת" class="border p-2 rounded" required>
+                    <textarea id="clientNotes" placeholder="הערות ללקוח" class="border p-2 rounded" rows="3"></textarea>
+                </div>
+                <button type="submit" class="bg-blue-500 text-white p-2 rounded mt-4 w-full">הוסף לקוח</button>
+            </form>
+            <div class="bg-white p-4 rounded shadow">
+                <h2 class="text-xl font-semibold mb-2">רשימת לקוחות</h2>
+                <table id="clientsTable" class="w-full text-sm text-left">
+                    <thead class="bg-gray-200">
+                        <tr>
+                            <th class="p-2">שם הלקוח</th>
+                            <th class="p-2">אימייל</th>
+                            <th class="p-2">טלפון</th>
+                            <th class="p-2">כתובת</th>
+                            <th class="p-2">מספר פרויקטים</th>
+                            <th class="p-2">סה"כ חשבונות</th>
+                            <th class="p-2">הערות</th>
+                            <th class="p-2">פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="invoices" class="hidden">
+            <h1 class="text-3xl font-bold mb-4">ניהול חשבונות</h1>
+            <form id="invoiceForm" class="bg-white p-4 rounded shadow mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <select id="invoiceProjectName" class="border p-2 rounded" required>
+                        <option value="">בחר פרויקט</option>
+                    </select>
+                    <input type="text" id="invoiceNumber" placeholder="מספר חשבון" class="border p-2 rounded" required>
+                    <input type="date" id="submissionDate" placeholder="תאריך הגשה" class="border p-2 rounded" required>
+                    <input type="number" id="requestedAmount" placeholder="סכום מבוקש" class="border p-2 rounded" required>
+                    <input type="number" id="approvedAmount" placeholder="סכום מאושר" class="border p-2 rounded">
+                    <input type="date" id="approvalDate" placeholder="תאריך אישור" class="border p-2 rounded">
+                    <input type="number" id="cumulativeAmount" placeholder="סכום מצטבר" class="border p-2 rounded" required>
+                    <input type="date" id="paymentDate" placeholder="תאריך תשלום" class="border p-2 rounded">
+                    <input type="text" id="supervisor" placeholder="מפקח" class="border p-2 rounded">
+                    <select id="invoiceStatus" class="border p-2 rounded" required>
+                        <option value="pending">ממתין לאישור</option>
+                        <option value="approved">מאושר</option>
+                        <option value="paid">שולם</option>
+                    </select>
+                    <textarea id="invoiceNotes" placeholder="הערות לחשבון" class="border p-2 rounded" rows="3"></textarea>
+                </div>
+                <button type="submit" class="bg-blue-500 text-white p-2 rounded mt-4 w-full">הוסף חשבון</button>
+            </form>
+            <div class="bg-white p-4 rounded shadow">
+                <div class="mb-4 flex items-center">
+                    <input type="text" id="invoiceSearch" placeholder="חיפוש..." class="border p-2 rounded flex-grow">
+                    <select id="invoiceFilter" class="border p-2 rounded ml-2">
+                        <option value="all">כל הסטטוסים</option>
+                        <option value="pending">ממתין לאישור</option>
+                        <option value="approved">מאושר</option>
+                        <option value="paid">שולם</option>
+                    </select>
+                </div>
+                <table id="invoicesTable" class="w-full text-sm text-left">
+                    <thead class="bg-gray-200">
+                        <tr>
+                            <th class="p-2">פרויקט</th>
+                            <th class="p-2">מספר חשבון</th>
+                            <th class="p-2">תאריך הגשה</th>
+                            <th class="p-2">סכום מבוקש</th>
+                            <th class="p-2">סכום מאושר</th>
+                            <th class="p-2">תאריך אישור</th>
+                            <th class="p-2">סכום מצטבר</th>
+                            <th class="p-2">תאריך תשלום</th>
+                            <th class="p-2">מפקח</th>
+                            <th class="p-2">סטטוס</th>
+                            <th class="p-2">הערות</th>
+                            <th class="p-2">פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <button id="exportExcel" class="bg-green-500 text-white p-2 rounded mt-4">ייצוא לאקסל</button>
+        </section>
+
+        <section id="tasks" class="hidden">
+            <h1 class="text-3xl font-bold mb-4">ניהול משימות</h1>
+            <form id="taskForm" class="bg-white p-4 rounded shadow mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <select id="taskProjectName" class="border p-2 rounded" required>
+                        <option value="">בחר פרויקט</option>
+                    </select>
+                    <input type="text" id="taskName" placeholder="שם המשימה" class="border p-2 rounded" required>
+                    <input type="date" id="taskDueDate" placeholder="תאריך יעד" class="border p-2 rounded" required>
+                    <select id="taskStatus" class="border p-2 rounded" required>
+                        <option value="pending">ממתינה</option>
+                        <option value="in_progress">בביצוע</option>
+                        <option value="completed">הושלמה</option>
+                    </select>
+                    <textarea id="taskDescription" placeholder="תיאור המשימה" class="border p-2 rounded" rows="3"></textarea>
+                </div>
+                <button type="submit" class="bg-blue-500 text-white p-2 rounded mt-4 w-full">הוסף משימה</button>
+            </form>
+            <div class="bg-white p-4 rounded shadow">
+                <h2 class="text-xl font-semibold mb-2">רשימת משימות</h2>
+                <div id="taskList" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-yellow-100 p-2 rounded">
+                        <h3 class="font-semibold mb-2">ממתינות</h3>
+                        <ul id="pendingTasks" class="min-h-[100px]"></ul>
+                    </div>
+                    <div class="bg-blue-100 p-2 rounded">
+                        <h3 class="font-semibold mb-2">בביצוע</h3>
+                        <ul id="inProgressTasks" class="min-h-[100px]"></ul>
+                    </div>
+                    <div class="bg-green-100 p-2 rounded">
+                        <h3 class="font-semibold mb-2">הושלמו</h3>
+                        <ul id="completedTasks" class="min-h-[100px]"></ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="reports" class="hidden">
+            <h1 class="text-3xl font-bold mb-4">דוחות</h1>
+            <div class="bg-white p-4 rounded shadow">
+                <div class="mb-4">
+                    <select id="reportType" class="border p-2 rounded w-full mb-2">
+                        <option value="project">דוח לפי פרויקט</option>
+                        <option value="client">דוח לפי לקוח</option>
+                        <option value="tasks">דוח משימות</option>
+                    </select>
+                    <select id="reportSelector" class="border p-2 rounded w-full"></select>
+                </div>
+                <div id="reportResult" class="mt-4"></div>
+                <canvas id="reportChart" class="mt-4"></canvas>
+            </div>
+        </section>
+    </div>
+    <script>
+        let projects = [];
+        let clients = [];
+        let invoices = [];
+        let tasks = [];
+        let invoiceStatusChart, projectSummaryChart, reportChart;
+
+        // ניווט
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('section').forEach(section => section.classList.add('hidden'));
+                document.getElementById(this.dataset.target).classList.remove('hidden');
+                document.querySelectorAll('.nav-link').forEach(navLink => navLink.classList.remove('active-nav'));
+                this.classList.add('active-nav');
+                if (this.dataset.target === 'home') updateDashboard();
+            });
+        });
+
+        // פרויקטים
+        document.getElementById('projectForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const newProject = {
+                id: Date.now(),
+                name: document.getElementById('projectName').value,
+                clientName: document.getElementById('clientName').value,
+                amount: parseFloat(document.getElementById('projectAmount').value),
+                startDate: document.getElementById('projectStartDate').value,
+                notes: document.getElementById('projectNotes').value
+            };
+            projects.push(newProject);
+            updateProjectsTable();
+            updateClientsList();
+            updateProjectsList();
+            updateDashboard();
+            this.reset();
+        });
+
+        function updateProjectsTable() {
+            const tableBody = document.querySelector('#projectsTable tbody');
+            tableBody.innerHTML = '';
+            projects.forEach(project => {
+                const projectInvoices = invoices.filter(inv => inv.projectName === project.name);
+                const totalInvoices = projectInvoices.reduce((sum, inv) => sum + inv.requestedAmount, 0);
+                const totalApproved = projectInvoices.reduce((sum, inv) => sum + (inv.approvedAmount || 0), 0);
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>${project.name}</td>
+                    <td>${project.clientName}</td>
+                    <td>₪${project.amount.toFixed(2)}</td>
+                    <td>${project.startDate}</td>
+                    <td>₪${totalInvoices.toFixed(2)}</td>
+                    <td>₪${totalApproved.toFixed(2)}</td>
+                    <td>₪${(project.amount - totalApproved).toFixed(2)}</td>
+                    <td>${project.notes}</td>
+                    <td>
+                        <button onclick="editProject(${project.id})" class="text-blue-500"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteProject(${project.id})" class="text-red-500"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+            });
+        }
+
+        function editProject(id) {
+            const project = projects.find(p => p.id === id);
+            if (!project) return;
+
+            document.getElementById('projectName').value = project.name;
+            document.getElementById('clientName').value = project.clientName;
+            document.getElementById('projectAmount').value = project.amount;
+            document.getElementById('projectStartDate').value = project.startDate;
+            document.getElementById('projectNotes').value = project.notes;
+
+            const submitButton = document.querySelector('#projectForm button[type="submit"]');
+            submitButton.textContent = 'עדכן פרויקט';
+            submitButton.onclick = function(e) {
+                e.preventDefault();
+                updateProject(id);
+            };
+        }
+
+        function updateProject(id) {
+            const index = projects.findIndex(p => p.id === id);
+            if (index === -1) return;
+
+            projects[index] = {
+                id: id,
+                name: document.getElementById('projectName').value,
+                clientName: document.getElementById('clientName').value,
+                amount: parseFloat(document.getElementById('projectAmount').value),
+                startDate: document.getElementById('projectStartDate').value,
+                notes: document.getElementById('projectNotes').value
+            };
+
+            updateProjectsTable();
+            updateClientsList();
+            updateProjectsList();
+            updateDashboard();
+
+            document.getElementById('projectForm').reset();
+            const submitButton = document.querySelector('#projectForm button[type="submit"]');
+            submitButton.textContent = 'הוסף פרויקט';
+            submitButton.onclick = null;
+
+            alert('הפרויקט עודכן בהצלחה!');
+        }
+
+        function deleteProject(id) {
+            if (!confirm('האם אתה בטוח שברצונך למחוק פרויקט זה?')) return;
+            projects = projects.filter(p => p.id !== id);
+            invoices = invoices.filter(inv => inv.projectName !== projects.find(p => p.id === id)?.name);
+            tasks = tasks.filter(t => t.projectName !== projects.find(p => p.id === id)?.name);
+            updateProjectsTable();
+            updateInvoicesTable();
+            updateClientsList();
+            updateProjectsList();
+            updateTaskList();
+            updateDashboard();
+            alert('הפרויקט נמחק בהצלחה!');
+        }
+
+        // לקוחות
+        document.getElementById('clientForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const newClient = {
+                id: Date.now(),
+                name: document.getElementById('newClientName').value,
+                email: document.getElementById('clientEmail').value,
+                phone: document.getElementById('clientPhone').value,
+                address: document.getElementById('clientAddress').value,
+                notes: document.getElementById('clientNotes').value
+            };
+            clients.push(newClient);
+            updateClientsTable();
+            updateClientsList();
+            updateDashboard();
+            this.reset();
+        });
+
+        function updateClientsTable() {
+            const tableBody = document.querySelector('#clientsTable tbody');
+            tableBody.innerHTML = '';
+            clients.forEach(client => {
+                const clientProjects = projects.filter(p => p.clientName === client.name);
+                const clientInvoices = invoices.filter(inv => clientProjects.some(p => p.name === inv.projectName));
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>${client.name}</td>
+                    <td>${client.email}</td>
+                    <td>${client.phone}</td>
+                    <td>${client.address}</td>
+                    <td>${clientProjects.length}</td>
+                    <td>₪${clientInvoices.reduce((sum, inv) => sum + inv.requestedAmount, 0).toFixed(2)}</td>
+                    <td>${client.notes}</td>
+                    <td>
+                        <button onclick="editClient(${client.id})" class="text-blue-500"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteClient(${client.id})" class="text-red-500"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+            });
+        }
+
+        function editClient(id) {
+            const client = clients.find(c => c.id === id);
+            if (!client) return;
+
+            document.getElementById('newClientName').value = client.name;
+            document.getElementById('clientEmail').value = client.email;
+            document.getElementById('clientPhone').value = client.phone;
+            document.getElementById('clientAddress').value = client.address;
+            document.getElementById('clientNotes').value = client.notes;
+
+            const submitButton = document.querySelector('#clientForm button[type="submit"]');
+            submitButton.textContent = 'עדכן לקוח';
+            submitButton.onclick = function(e) {
+                e.preventDefault();
+                updateClient(id);
+            };
+        }
+
+        function updateClient(id) {
+            const index = clients.findIndex(c => c.id === id);
+            if (index === -1) return;
+
+            const oldName = clients[index].name;
+            const newName = document.getElementById('newClientName').value;
+
+            clients[index] = {
+                id: id,
+                name: newName,
+                email: document.getElementById('clientEmail').value,
+                phone: document.getElementById('clientPhone').value,
+                address: document.getElementById('clientAddress').value,
+                notes: document.getElementById('clientNotes').value
+            };
+
+            // עדכון שם הלקוח בפרויקטים
+            projects.forEach(project => {
+                if (project.clientName === oldName) {
+                    project.clientName = newName;
+                }
+            });
+
+            updateClientsTable();
+            updateProjectsTable();
+            updateClientsList();
+            updateDashboard();
+
+            document.getElementById('clientForm').reset();
+            const submitButton = document.querySelector('#clientForm button[type="submit"]');
+            submitButton.textContent = 'הוסף לקוח';
+            submitButton.onclick = null;
+
+            alert('הלקוח עודכן בהצלחה!');
+        }
+
+        function deleteClient(id) {
+            if (!confirm('האם אתה בטוח שברצונך למחוק לקוח זה?')) return;
+            const client = clients.find(c => c.id === id);
+            clients = clients.filter(c => c.id !== id);
+            projects = projects.filter(p => p.clientName !== client.name);
+            invoices = invoices.filter(inv => !projects.some(p => p.name === inv.projectName && p.clientName === client.name));
+            tasks = tasks.filter(t => !projects.some(p => p.name === t.projectName && p.clientName === client.name));
+            updateClientsTable();
+            updateProjectsTable();
+            updateInvoicesTable();
+            updateClientsList();
+            updateProjectsList();
+            updateTaskList();
+            updateDashboard();
+            alert('הלקוח נמחק בהצלחה!');
+        }
+
+        function updateClientsList() {
+            const clientSelect = document.getElementById('clientName');
+            clientSelect.innerHTML = '<option value="">בחר לקוח</option>';
+            clients.forEach(client => {
+                const option = document.createElement('option');
+                option.value = client.name;
+                option.textContent = client.name;
+                clientSelect.appendChild(option);
+            });
+        }
+
+        // חשבונות
+        document.getElementById('invoiceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const newInvoice = {
+                id: Date.now(),
+                projectName: document.getElementById('invoiceProjectName').value,
+                invoiceNumber: document.getElementById('invoiceNumber').value,
+                submissionDate: document.getElementById('submissionDate').value,
+                requestedAmount: parseFloat(document.getElementById('requestedAmount').value),
+                approvedAmount: parseFloat(document.getElementById('approvedAmount').value) || null,
+                approvalDate: document.getElementById('approvalDate').value || null,
+                cumulativeAmount: parseFloat(document.getElementById('cumulativeAmount').value),
+                paymentDate: document.getElementById('paymentDate').value || null,
+                supervisor: document.getElementById('supervisor').value,
+                status: document.getElementById('invoiceStatus').value,
+                notes: document.getElementById('invoiceNotes').value
+            };
+            invoices.push(newInvoice);
+            updateInvoicesTable();
+            updateProjectsTable();
+            updateDashboard();
+            this.reset();
+        });
+
+        function updateInvoicesTable() {
+            const tableBody = document.querySelector('#invoicesTable tbody');
+            tableBody.innerHTML = '';
+            const filterStatus = document.getElementById('invoiceFilter').value;
+            const searchTerm = document.getElementById('invoiceSearch').value.toLowerCase();
+            
+            invoices.filter(invoice => 
+                (filterStatus === 'all' || invoice.status === filterStatus) &&
+                (invoice.projectName.toLowerCase().includes(searchTerm) || 
+                 invoice.invoiceNumber.toLowerCase().includes(searchTerm))
+            ).forEach(invoice => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>${invoice.projectName}</td>
+                    <td>${invoice.invoiceNumber}</td>
+                    <td>${invoice.submissionDate}</td>
+                    <td>₪${invoice.requestedAmount.toFixed(2)}</td>
+                    <td>${invoice.approvedAmount ? '₪' + invoice.approvedAmount.toFixed(2) : '-'}</td>
+                    <td>${invoice.approvalDate || '-'}</td>
+                    <td>₪${invoice.cumulativeAmount.toFixed(2)}</td>
+                    <td>${invoice.paymentDate || '-'}</td>
+                    <td>${invoice.supervisor}</td>
+                    <td>${getStatusDisplay(invoice.status)}</td>
+                    <td>${invoice.notes}</td>
+                    <td>
+                        <button onclick="editInvoice(${invoice.id})" class="text-blue-500"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteInvoice(${invoice.id})" class="text-red-500"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+            });
+        }
+
+        function getStatusDisplay(status) {
+            switch(status) {
+                case 'pending': return '<span class="text-yellow-500">ממתין לאישור</span>';
+                case 'approved': return '<span class="text-green-500">מאושר</span>';
+                case 'paid': return '<span class="text-blue-500">שולם</span>';
+                default: return status;
+            }
+        }
+
+        function editInvoice(id) {
+            const invoice = invoices.find(inv => inv.id === id);
+            if (!invoice) return;
+
+            document.getElementById('invoiceProjectName').value = invoice.projectName;
+            document.getElementById('invoiceNumber').value = invoice.invoiceNumber;
+            document.getElementById('submissionDate').value = invoice.submissionDate;
+            document.getElementById('requestedAmount').value = invoice.requestedAmount;
+            document.getElementById('approvedAmount').value = invoice.approvedAmount || '';
+            document.getElementById('approvalDate').value = invoice.approvalDate || '';
+            document.getElementById('cumulativeAmount').value = invoice.cumulativeAmount;
+            document.getElementById('paymentDate').value = invoice.paymentDate || '';
+            document.getElementById('supervisor').value = invoice.supervisor;
+            document.getElementById('invoiceStatus').value = invoice.status;
+            document.getElementById('invoiceNotes').value = invoice.notes;
+
+            const submitButton = document.querySelector('#invoiceForm button[type="submit"]');
+            submitButton.textContent = 'עדכן חשבון';
+            submitButton.onclick = function(e) {
+                e.preventDefault();
+                updateInvoice(id);
+            };
+        }
+
+        function updateInvoice(id) {
+            const index = invoices.findIndex(inv => inv.id === id);
+            if (index === -1) return;
+
+            invoices[index] = {
+                id: id,
+                projectName: document.getElementById('invoiceProjectName').value,
+                invoiceNumber: document.getElementById('invoiceNumber').value,
+                submissionDate: document.getElementById('submissionDate').value,
+                requestedAmount: parseFloat(document.getElementById('requestedAmount').value),
+                approvedAmount: parseFloat(document.getElementById('approvedAmount').value) || null,
+                approvalDate: document.getElementById('approvalDate').value || null,
+                cumulativeAmount: parseFloat(document.getElementById('cumulativeAmount').value),
+                paymentDate: document.getElementById('paymentDate').value || null,
+                supervisor: document.getElementById('supervisor').value,
+                status: document.getElementById('invoiceStatus').value,
+                notes: document.getElementById('invoiceNotes').value
+            };
+
+            updateInvoicesTable();
+            updateProjectsTable();
+            updateDashboard();
+
+            document.getElementById('invoiceForm').reset();
+            const submitButton = document.querySelector('#invoiceForm button[type="submit"]');
+            submitButton.textContent = 'הוסף חשבון';
+            submitButton.onclick = null;
+
+            alert('החשבון עודכן בהצלחה!');
+        }
+
+        function deleteInvoice(id) {
+            if (!confirm('האם אתה בטוח שברצונך למחוק חשבון זה?')) return;
+            invoices = invoices.filter(inv => inv.id !== id);
+            updateInvoicesTable();
+            updateProjectsTable();
+            updateDashboard();
+            alert('החשבון נמחק בהצלחה!');
+        }
+
+        // משימות
+        document.getElementById('taskForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const newTask = {
+                id: Date.now(),
+                projectName: document.getElementById('taskProjectName').value,
+                name: document.getElementById('taskName').value,
+                dueDate: document.getElementById('taskDueDate').value,
+                status: document.getElementById('taskStatus').value,
+                description: document.getElementById('taskDescription').value
+            };
+            tasks.push(newTask);
+            updateTaskList();
+            this.reset();
+        });
+
+        function updateTaskList() {
+            const pendingTasks = document.getElementById('pendingTasks');
+            const inProgressTasks = document.getElementById('inProgressTasks');
+            const completedTasks = document.getElementById('completedTasks');
+
+            pendingTasks.innerHTML = '';
+            inProgressTasks.innerHTML = '';
+            completedTasks.innerHTML = '';
+
+            tasks.forEach(task => {
+                const taskElement = document.createElement('li');
+                taskElement.className = 'bg-white p-2 mb-2 rounded shadow';
+                taskElement.innerHTML = `
+                    <h4 class="font-semibold">${task.name}</h4>
+                    <p>פרויקט: ${task.projectName}</p>
+                    <p>תאריך יעד: ${task.dueDate}</p>
+                    <p>${task.description}</p>
+                    <div class="mt-2">
+                        <button onclick="editTask(${task.id})" class="text-blue-500"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteTask(${task.id})" class="text-red-500"><i class="fas fa-trash"></i></button>
+                    </div>
+                `;
+
+                switch (task.status) {
+                    case 'pending':
+                        pendingTasks.appendChild(taskElement);
+                        break;
+                    case 'in_progress':
+                        inProgressTasks.appendChild(taskElement);
+                        break;
+                    case 'completed':
+                        completedTasks.appendChild(taskElement);
+                        break;
+                }
+            });
+
+            // הפעלת גרירה ושחרור על רשימות המשימות
+            ['pendingTasks', 'inProgressTasks', 'completedTasks'].forEach(listId => {
+                new Sortable(document.getElementById(listId), {
+                    group: 'shared',
+                    animation: 150,
+                    onEnd: function (evt) {
+                        const taskId = evt.item.querySelector('button').getAttribute('onclick').match(/\d+/)[0];
+                        const newStatus = evt.to.id === 'pendingTasks' ? 'pending' :
+                                          evt.to.id === 'inProgressTasks' ? 'in_progress' : 'completed';
+                        updateTaskStatus(parseInt(taskId), newStatus);
+                    }
+                });
+            });
+        }
+
+        function updateTaskStatus(taskId, newStatus) {
+            const taskIndex = tasks.findIndex(t => t.id === taskId);
+            if (taskIndex !== -1) {
+                tasks[taskIndex].status = newStatus;
+            }
+        }
+
+        function editTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+
+            document.getElementById('taskProjectName').value = task.projectName;
+            document.getElementById('taskName').value = task.name;
+            document.getElementById('taskDueDate').value = task.dueDate;
+            document.getElementById('taskStatus').value = task.status;
+            document.getElementById('taskDescription').value = task.description;
+
+            const submitButton = document.querySelector('#taskForm button[type="submit"]');
+            submitButton.textContent = 'עדכן משימה';
+            submitButton.onclick = function(e) {
+                e.preventDefault();
+                updateTask(id);
+            };
+        }
+
+        function updateTask(id) {
+            const index = tasks.findIndex(t => t.id === id);
+            if (index === -1) return;
+
+            tasks[index] = {
+                id: id,
+                projectName: document.getElementById('taskProjectName').value,
+                name: document.getElementById('taskName').value,
+                dueDate: document.getElementById('taskDueDate').value,
+                status: document.getElementById('taskStatus').value,
+                description: document.getElementById('taskDescription').value
+            };
+
+            updateTaskList();
+
+            document.getElementById('taskForm').reset();
+            const submitButton = document.querySelector('#taskForm button[type="submit"]');
+            submitButton.textContent = 'הוסף משימה';
+            submitButton.onclick = null;
+
+            alert('המשימה עודכנה בהצלחה!');
+        }
+
+        function deleteTask(id) {
+            if (!confirm('האם אתה בטוח שברצונך למחוק משימה זו?')) return;
+            tasks = tasks.filter(t => t.id !== id);
+            updateTaskList();
+            alert('המשימה נמחקה בהצלחה!');
+        }
+
+        // עדכון הדשבורד
+        function updateDashboard() {
+            document.getElementById('totalProjects').textContent = projects.length;
+            document.getElementById('totalClients').textContent = clients.length;
+            document.getElementById('totalInvoices').textContent = invoices.length;
+            document.getElementById('totalApproved').textContent = '₪' + invoices.reduce((sum, inv) => sum + (inv.approvedAmount || 0), 0).toFixed(2);
+
+            updateInvoiceStatusChart();
+            updateProjectSummaryChart();
+            updateAlerts();
+        }
+
+        function updateInvoiceStatusChart() {
+            const ctx = document.getElementById('invoiceStatusChart').getContext('2d');
+            const statusCounts = {
+                pending: invoices.filter(inv => inv.status === 'pending').length,
+                approved: invoices.filter(inv => inv.status === 'approved').length,
+                paid: invoices.filter(inv => inv.status === 'paid').length
+            };
+
+            if (invoiceStatusChart) {
+                invoiceStatusChart.destroy();
+            }
+
+            invoiceStatusChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['ממתין לאישור', 'מאושר', 'שולם'],
+                    datasets: [{
+                        data: [statusCounts.pending, statusCounts.approved, statusCounts.paid],
+                        backgroundColor: ['#FFA500', '#32CD32', '#4169E1']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        title: {
+                            display: true,
+                            text: 'סטטוס חשבונות'
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateProjectSummaryChart() {
+            const ctx = document.getElementById('projectSummaryChart').getContext('2d');
+            const projectData = projects.map(project => {
+                const projectInvoices = invoices.filter(inv => inv.projectName === project.name);
+                const totalApproved = projectInvoices.reduce((sum, inv) => sum + (inv.approvedAmount || 0), 0);
+                return {
+                    name: project.name,
+                    totalAmount: project.amount,
+                    approvedAmount: totalApproved
+                };
+            });
+
+            if (projectSummaryChart) {
+                projectSummaryChart.destroy();
+            }
+
+            projectSummaryChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: projectData.map(p => p.name),
+                    datasets: [
+                        {
+                            label: 'סכום פרויקט',
+                            data: projectData.map(p => p.totalAmount),
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgb(54, 162, 235)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'סכום מאושר',
+                            data: projectData.map(p => p.approvedAmount),
+                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                            borderColor: 'rgb(75, 192, 192)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'סיכום פרויקטים'
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateAlerts() {
+            const alertsList = document.getElementById('alertsList');
+            alertsList.innerHTML = '';
+
+            // בדיקת חשבונות שעברו את מועד התשלום
+            const overdueinvoices = invoices.filter(inv => 
+                inv.status !== 'paid' && 
+                new Date(inv.submissionDate) < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+            );
+            if (overdueinvoices.length > 0) {
+                const alert = document.createElement('li');
+                alert.textContent = `ישנם ${overdueinvoices.length} חשבונות שעברו 30 יום מתאריך ההגשה וטרם שולמו`;
+                alert.classList.add('text-red-500');
+                alertsList.appendChild(alert);
+            }
+
+            // בדיקת פרויקטים שקרובים לחריגה מהתקציב
+            projects.forEach(project => {
+                const projectInvoices = invoices.filter(inv => inv.projectName === project.name);
+                const totalApproved = projectInvoices.reduce((sum, inv) => sum + (inv.approvedAmount || 0), 0);
+                if (totalApproved > project.amount * 0.9) {
+                    const alert = document.createElement('li');
+                    alert.textContent = `הפרויקט "${project.name}" קרוב לחריגה מהתקציב (${((totalApproved / project.amount) * 100).toFixed(1)}% נוצל)`;
+                    alert.classList.add('text-yellow-500');
+                    alertsList.appendChild(alert);
+                }
+            });
+
+            // בדיקת משימות שמועד היעד שלהן קרוב
+            const upcomingTasks = tasks.filter(task => 
+                task.status !== 'completed' && 
+                new Date(task.dueDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+            );
+            if (upcomingTasks.length > 0) {
+                const alert = document.createElement('li');
+                alert.textContent = `ישנן ${upcomingTasks.length} משימות שמועד היעד שלהן בשבוע הקרוב`;
+                alert.classList.add('text-blue-500');
+                alertsList.appendChild(alert);
+            }
+        }
+
+        // דוחות
+        document.getElementById('reportType').addEventListener('change', updateReportSelectors);
+        document.getElementById('reportSelector').addEventListener('change', showReport);
+
+        function updateReportSelectors() {
+            const reportSelector = document.getElementById('reportSelector');
+            reportSelector.innerHTML = '';
+            const type = document.getElementById('reportType').value;
+            const items = type === 'project' ? projects : type === 'client' ? clients : ['all'];
+            items.forEach(item => {
+                const option = document.createElement('option');
+                option.value = type === 'tasks' ? 'all' : item.id;
+                option.textContent = type === 'tasks' ? 'כל המשימות' : item.name;
+                reportSelector.appendChild(option);
+            });
+            showReport();
+        }
+
+        function showReport() {
+            const type = document.getElementById('reportType').value;
+            const selectedId = document.getElementById('reportSelector').value;
+            const reportResult = document.getElementById('reportResult');
+            
+            if (type === 'project') {
+                const project = projects.find(p => p.id == selectedId);
+                if (!project) return;
+
+                const projectInvoices = invoices.filter(inv => inv.projectName === project.name);
+                const totalRequested = projectInvoices.reduce((sum, inv) => sum + inv.requestedAmount, 0);
+                const totalApproved = projectInvoices.reduce((sum, inv) => sum + (inv.approvedAmount || 0), 0);
+                const totalPaid = projectInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (inv.approvedAmount || 0), 0);
+
+                reportResult.innerHTML = `
+                    <h3 class="font-semibold">דוח פרויקט: ${project.name}</h3>
+                    <p>לקוח: ${project.clientName}</p>
+                    <p>תאריך התחלה: ${project.startDate}</p>
+                    <p>סכום פרויקט: ₪${project.amount.toFixed(2)}</p>
+                    <p>סך הכל הוגש: ₪${totalRequested.toFixed(2)}</p>
+                    <p>סך הכל אושר: ₪${totalApproved.toFixed(2)}</p>
+                    <p>סך הכל שולם: ₪${totalPaid.toFixed(2)}</p>
+                    <p>יתרה: ₪${(project.amount - totalApproved).toFixed(2)}</p>
+                `;
+
+                updateReportChart(projectInvoices, 'project');
+            } else if (type === 'client') {
+                const client = clients.find(c => c.id == selectedId);
+                if (!client) return;
+
+                const clientProjects = projects.filter(p => p.clientName === client.name);
+                const clientInvoices = invoices.filter(inv => clientProjects.some(p => p.name === inv.projectName));
+                const totalRequested = clientInvoices.reduce((sum, inv) => sum + inv.requestedAmount, 0);
+                const totalApproved = clientInvoices.reduce((sum, inv) => sum + (inv.approvedAmount || 0), 0);
+                const totalPaid = clientInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (inv.approvedAmount || 0), 0);
+
+                reportResult.innerHTML = `
+                    <h3 class="font-semibold">דוח לקוח: ${client.name}</h3>
+                    <p>מספר פרויקטים: ${clientProjects.length}</p>
+                    <p>סך הכל הוגש: ₪${totalRequested.toFixed(2)}</p>
+                    <p>סך הכל אושר: ₪${totalApproved.toFixed(2)}</p>
+                    <p>סך הכל שולם: ₪${totalPaid.toFixed(2)}</p>
+                `;
+
+                updateReportChart(clientInvoices, 'client');
+            } else if (type === 'tasks') {
+                const allTasks = tasks;
+                const pendingTasks = allTasks.filter(t => t.status === 'pending');
+                const inProgressTasks = allTasks.filter(t => t.status === 'in_progress');
+                const completedTasks = allTasks.filter(t => t.status === 'completed');
+
+                reportResult.innerHTML = `
+                    <h3 class="font-semibold">דוח משימות</h3>
+                    <p>סך הכל משימות: ${allTasks.length}</p>
+                    <p>משימות ממתינות: ${pendingTasks.length}</p>
+                    <p>משימות בביצוע: ${inProgressTasks.length}</p>
+                    <p>משימות שהושלמו: ${completedTasks.length}</p>
+                `;
+
+                updateReportChart(allTasks, 'tasks');
+            }
+        }
+
+        function updateReportChart(data, type) {
+            const ctx = document.getElementById('reportChart').getContext('2d');
+
+            if (reportChart) {
+                reportChart.destroy();
+            }
+
+            if (type === 'project' || type === 'client') {
+                const monthlyData = {};
+
+                data.forEach(invoice => {
+                    const month = invoice.submissionDate.slice(0, 7); // YYYY-MM
+                    if (!monthlyData[month]) {
+                        monthlyData[month] = { requested: 0, approved: 0, paid: 0 };
+                    }
+                    monthlyData[month].requested += invoice.requestedAmount;
+                    monthlyData[month].approved += invoice.approvedAmount || 0;
+                    monthlyData[month].paid += (invoice.status === 'paid' ? (invoice.approvedAmount || 0) : 0);
+                });
+
+                const sortedMonths = Object.keys(monthlyData).sort();
+
+                reportChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: sortedMonths,
+                        datasets: [
+                            {
+                                label: 'סכום מבוקש',
+                                data: sortedMonths.map(month => monthlyData[month].requested),
+                                borderColor: 'rgb(255, 99, 132)',
+                                backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                                fill: false
+                            },
+                            {
+                                label: 'סכום מאושר',
+                                data: sortedMonths.map(month => monthlyData[month].approved),
+                                borderColor: 'rgb(54, 162, 235)',
+                                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                                fill: false
+                            },
+                            {
+                                label: 'סכום ששולם',
+                                data: sortedMonths.map(month => monthlyData[month].paid),
+                                borderColor: 'rgb(75, 192, 192)',
+                                backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: 'סיכום חודשי'
+                            }
+                        }
+                    }
+                });
+            } else if (type === 'tasks') {
+                reportChart = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['ממתינות', 'בביצוע', 'הושלמו'],
+                        datasets: [{
+                            data: [
+                                data.filter(t => t.status === 'pending').length,
+                                data.filter(t => t.status === 'in_progress').length,
+                                data.filter(t => t.status === 'completed').length
+                            ],
+                            backgroundColor: ['#FFA500', '#4169E1', '#32CD32']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                            },
+                            title: {
+                                display: true,
+                                text: 'סטטוס משימות'
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // ייצוא לאקסל
+        document.getElementById('exportExcel').addEventListener('click', exportToExcel);
+
+        function exportToExcel() {
+            const ws = XLSX.utils.json_to_sheet(invoices);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Invoices");
+            XLSX.writeFile(wb, "invoices.xlsx");
+        }
+
+        // עדכון רשימת הפרויקטים
+        function updateProjectsList() {
+            const projectSelect = document.getElementById('invoiceProjectName');
+            const taskProjectSelect = document.getElementById('taskProjectName');
+            [projectSelect, taskProjectSelect].forEach(select => {
+                select.innerHTML = '<option value="">בחר פרויקט</option>';
+                projects.forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project.name;
+                    option.textContent = project.name;
+                    select.appendChild(option);
+                });
+            });
+        }
+
+        // חיפוש וסינון חשבונות
+        document.getElementById('invoiceSearch').addEventListener('input', updateInvoicesTable);
+        document.getElementById('invoiceFilter').addEventListener('change', updateInvoicesTable);
+
+        // אתחול
+        updateClientsList();
+        updateProjectsList();
+        updateProjectsTable();
+        updateInvoicesTable();
+        updateTaskList();
+        updateReportSelectors();
+        updateDashboard();
+    </script>
+</body>
+</html>
